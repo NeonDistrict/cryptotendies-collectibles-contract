@@ -24,14 +24,13 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
       MINTER_ADMIN_ROLE;
 
   const owner = accounts[0];
-  const creator = accounts[1];
-  const userA = accounts[2];
-  const userB = accounts[3];
-  const proxyForOwner = accounts[4];
-  const userCreator = accounts[5];
-  const userMinter = accounts[6];
-  const userCreatorAdmin = accounts[7];
-  const userMinterAdmin = accounts[8];
+  const userA = accounts[1];
+  const userB = accounts[2];
+  const proxyForOwner = accounts[3];
+  const userCreator = accounts[4];
+  const userMinter = accounts[5];
+  const userCreatorAdmin = accounts[6];
+  const userMinterAdmin = accounts[7];
 
   let instance;
   let proxy;
