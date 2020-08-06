@@ -4,10 +4,11 @@ pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+//import "@openzeppelin/contracts/access/AccessControl.sol";
 //import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "./erc1155-openzeppelin/ERC1155.sol";
 //import "@openzeppelin/contracts/token/ERC1155/ERC1155Burnable.sol";
+import "./erc1155-openzeppelin/AccessControl.sol";
+import "./erc1155-openzeppelin/ERC1155.sol";
 import "./erc1155-openzeppelin/ERC1155Burnable.sol";
 import "./Strings.sol";
 
@@ -19,8 +20,9 @@ contract ProxyRegistry {
 
 /**
  * @title BaseERC1155
- * BaseERC1155 - ERC1155 contract that whitelists an operator address, has create and mint functionality, and supports useful standards from OpenZeppelin,
-  like _exists(), name(), symbol(), and totalSupply()
+ * BaseERC1155 - ERC1155 contract that whitelists an operator address,
+ * has create and mint functionality, and supports useful standards from OpenZeppelin,
+ * like name(), symbol(), and totalSupply()
  */
 contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnable
 {
@@ -31,8 +33,8 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
   address proxyRegistryAddress;
 
   // Keep track of the latest token ID & individual supplies
-  uint256 private _maxTokenID = 0;
-  mapping (uint256 => uint256) public tokenSupply;
+  uint256 public maxTokenID = 0;
+  mapping (uint256 => uint256) public totalSupply;
 
   // Contract name & symbol
   string public name;
@@ -73,6 +75,51 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
   }
 
 
+/**
+ * Only Token Creator Admin Functions
+ **/
+
+  function grantCreatorAdmin(
+    address _address
+  )
+    external
+  {
+    require(hasRole(CREATOR_ADMIN_ROLE, _msgSender()), "Not a creator admin");
+    _grantRole(CREATOR_ADMIN_ROLE, _address);
+  }
+
+  function revokeCreatorAdmin(
+    address _address
+  )
+    external
+  {
+    require(hasRole(CREATOR_ADMIN_ROLE, _msgSender()), "Not a creator admin");
+    _revokeRole(CREATOR_ADMIN_ROLE, _address);
+  }
+
+  function grantMinterAdmin(
+    address _address
+  )
+    external
+  {
+    require(hasRole(MINTER_ADMIN_ROLE, _msgSender()), "Not a minter admin");
+    _grantRole(MINTER_ADMIN_ROLE, _address);
+  }
+
+  function revokeMinterAdmin(
+    address _address
+  )
+    external
+  {
+    require(hasRole(MINTER_ADMIN_ROLE, _msgSender()), "Not a minter admin");
+    _revokeRole(MINTER_ADMIN_ROLE, _address);
+  }
+
+
+/**
+ * Only Owner Functions
+ **/
+
   function setProxyRegistryAddress(
     address _proxyRegistryAddress
   )
@@ -93,13 +140,17 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
   }
 
 
+/**
+ * Views
+ **/
+
   function uri(
     uint256 _id
   )
     public view override
     returns (string memory)
   {
-    require(_exists(_id), "BaseERC1155#uri: NONEXISTENT_TOKEN");
+    require(_id <= maxTokenID, "BaseERC1155#uri: NONEXISTENT_TOKEN");
     return Strings.strConcat(
       ERC1155.uri(_id),
       Strings.uint2str(_id)
@@ -107,32 +158,27 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
   }
 
 
-  function totalSupply(
-    uint256 _id
-  )
-    public view
-    returns (uint256)
-  {
-    return tokenSupply[_id];
-  }
+/**
+ * Only Token Creator Functions
+ **/
 
-
+  // Intentionally virtual to allow for extensions on the terms of creating tokens
   function create(
     uint256 _numberToCreate
   )
     external virtual
-    returns (uint256)
   {
     require(hasRole(CREATOR_ROLE, _msgSender()), "Not a creator");
     require(_numberToCreate > 0, "Must create at least one token");
 
     // Keep track of the latest ID
-    _maxTokenID = _maxTokenID.add(_numberToCreate);
-
-    // Return the total number of tokens available
-    return _maxTokenID;
+    maxTokenID = maxTokenID.add(_numberToCreate);
   }
 
+
+/**
+ * Only Token Minter Functions
+ **/
 
   function mint(
     address _to,
@@ -144,7 +190,7 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
   {
     require(hasRole(MINTER_ROLE, _msgSender()), "Caller is not minter");
 
-    tokenSupply[_id] = tokenSupply[_id].add(_quantity);
+    totalSupply[_id] = totalSupply[_id].add(_quantity);
 
     _mint(_to, _id, _quantity, _data);
   }
@@ -161,7 +207,7 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
     require(hasRole(MINTER_ROLE, _msgSender()), "Caller is not minter");
 
     for (uint256 i = 0; i < _ids.length; i++) {
-      tokenSupply[_ids[i]] = tokenSupply[_ids[i]].add(_quantities[i]);
+      totalSupply[_ids[i]] = totalSupply[_ids[i]].add(_quantities[i]);
     }
 
     _mintBatch(_to, _ids, _quantities, _data);
@@ -177,7 +223,7 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
   {
     super.burn(_from, _id, _amount);
 
-    tokenSupply[_id] = tokenSupply[_id].sub(_amount);
+    totalSupply[_id] = totalSupply[_id].sub(_amount);
   }
 
 
@@ -191,7 +237,7 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
     super.burnBatch(_from, _ids, _amounts);
 
     for (uint256 i = 0; i < _ids.length; i++) {
-      tokenSupply[_ids[i]] = tokenSupply[_ids[i]].sub(_amounts[i]);
+      totalSupply[_ids[i]] = totalSupply[_ids[i]].sub(_amounts[i]);
     }
   }
 
@@ -215,16 +261,6 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
     }
 
     return super.isApprovedForAll(_owner, _operator);
-  }
-
-
-  function _exists(
-    uint256 _id
-  )
-    internal view
-    returns (bool)
-  {
-    return _id <= _maxTokenID;
   }
 
 }

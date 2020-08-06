@@ -1,3 +1,4 @@
+/*
 const TendiesBox = artifacts.require("../contracts/TendiesBox.sol");
 
 contract("TendiesBox", (accounts) => {
@@ -13,3 +14,4 @@ contract("TendiesBox", (accounts) => {
     });
   });
 });
+*/

@@ -1,3 +1,4 @@
+/*
 const TendiesCard = artifacts.require("../contracts/TendiesCard.sol");
 
 contract("TendiesCard", (accounts) => {
@@ -13,3 +14,4 @@ contract("TendiesCard", (accounts) => {
     });
   });
 });
+*/
