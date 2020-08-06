@@ -1,0 +1,27 @@
+{
+  "name": "CryptoTendies",
+  "version": "1.0.0",
+  "description": "CryptoTendies Collectibles and Boxes, ERC-1155 standard tokens.",
+  "main": "index.js",
+  "scripts": {
+    "build": "truffle compile",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NeonDistrict/cryptotendies-collectibles-contract.git"
+  },
+  "author": "Blockade Games, Inc",
+  "license": "MIT",
+  "dependencies": {
+    "@openzeppelin/contracts": "^3.1.0",
+    "truffle": "^5.1.12",
+    "truffle-assertions": "^0.9.2",
+    "truffle-flattener": "1.4.2",
+    "truffle-hdwallet-provider": "1.0.17",
+    "web3": "1.0.0-beta.34"
+  },
+  "devDependencies": {
+    "eth-gas-reporter": "^0.2.14"
+  }
+}
