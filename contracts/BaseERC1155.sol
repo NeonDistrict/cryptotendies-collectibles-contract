@@ -196,6 +196,7 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
   }
 
 
+  /*
   function mintBatch(
     address _to,
     uint256[] memory _ids,
@@ -212,6 +213,7 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
 
     _mintBatch(_to, _ids, _quantities, _data);
   }
+  */
 
 
   function burn(
@@ -227,6 +229,7 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
   }
 
 
+  /*
   function burnBatch(
     address _from,
     uint256[] memory _ids,
@@ -240,6 +243,7 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
       totalSupply[_ids[i]] = totalSupply[_ids[i]].sub(_amounts[i]);
     }
   }
+  */
 
   /**
    * Override isApprovedForAll to whitelist user's OpenSea proxy accounts to enable gas-free listings.

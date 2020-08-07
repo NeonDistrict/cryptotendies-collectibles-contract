@@ -1,8 +1,6 @@
 const TendiesCard = artifacts.require("TendiesCard");
 const TendiesBox = artifacts.require("TendiesBox");
-
-// If you want to set preminted token ids for specific classes
-const TOKEN_ID_MAPPING = undefined; // { [key: number]: Array<[tokenId: string]> }
+const config = require('../lib/configV1.js');
 
 module.exports = function(deployer, network) {
   // OpenSea proxy registry addresses for rinkeby and mainnet.
@@ -20,23 +18,26 @@ module.exports = function(deployer, network) {
       console.log("Deploying TendiesBox");
       return deployer.deploy(TendiesBox, instance.address, proxyRegistryAddress);
     })
-    //.then(setupLootbox);
+    .then(setupCardsAndPacks);
 };
 
-/*
-async function setupLootbox() {
-  // Transfer ownership of the collectibles to the lootbox
+async function setupCardsAndPacks() {
+  const boxes = await TendiesBox.deployed();
   const collectible = await TendiesCard.deployed();
-  await collectible.transferOwnership(TendiesBox.address);
 
-  // Define the token ID mapping
-  if (TOKEN_ID_MAPPING) {
-    const lootbox = await TendiesBox.deployed();
-    for (const rarity in TOKEN_ID_MAPPING) {
-      console.log(`Setting token ids for rarity ${rarity}`);
-      const tokenIds = TOKEN_ID_MAPPING[rarity];
-      await lootbox.setTokenIdsForClass(rarity, tokenIds);
-    }
+  // Grant the TendiesBox permission to mint TendiesCards
+  const MINTER_ROLE = await collectible.MINTER_ROLE();
+  await collectible.grantRole(MINTER_ROLE, TendiesBox.address);
+
+  // Set up all of the tokens
+  await collectible.create(config.TOKEN_COUNTS, config.CLASS_IDS);
+
+  // Now set up the packs
+  for (let boxIdx = 0; boxIdx < config.BOXES.length; boxIdx++) {
+    await boxes.create(
+      config.BOXES[boxIdx].NUM_CARDS,
+      config.BOXES[boxIdx].CLASS_IDS,
+      config.BOXES[boxIdx].CLASS_PROBABILITIES
+    );
   }
 }
-*/

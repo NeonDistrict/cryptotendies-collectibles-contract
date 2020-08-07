@@ -534,7 +534,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
   });
 
   describe('#batchMint()', () => {
-    it('should allow minter to batch mint tokens',
+    it.skip('should allow minter to batch mint tokens',
       async () => {
         await instance.mintBatch(
           userA, [INITIAL_TOKEN_ID], [MINT_AMOUNT], "0x0", { from: userMinter }
@@ -545,7 +545,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
         assert.isOk(supply.eq(MINT_AMOUNT.add(MINT_AMOUNT)));
       });
 
-    it('should not allow owner to batch mint tokens if not minter',
+    it.skip('should not allow owner to batch mint tokens if not minter',
       async () => {
         truffleAssert.fails(
           instance.mintBatch(userA, [INITIAL_TOKEN_ID], [MINT_AMOUNT], "0x0", { from: owner }),
@@ -555,7 +555,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
         assert.isOk(supply.eq(MINT_AMOUNT.add(MINT_AMOUNT)));
       });
 
-    it('should not allow regular user to batch mint tokens if not minter',
+    it.skip('should not allow regular user to batch mint tokens if not minter',
       async () => {
         truffleAssert.fails(
           instance.mintBatch(userA, [INITIAL_TOKEN_ID], [MINT_AMOUNT], "0x0", { from: userB }),
@@ -565,7 +565,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
         assert.isOk(supply.eq(MINT_AMOUNT.add(MINT_AMOUNT)));
       });
 
-    it('should not overflow token balances',
+    it.skip('should not overflow token balances',
       async () => {
         const supply = await instance.totalSupply(INITIAL_TOKEN_ID);
         assert.isOk(supply.eq(MINT_AMOUNT.add(MINT_AMOUNT)));
