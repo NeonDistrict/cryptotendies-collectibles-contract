@@ -14,7 +14,9 @@ module.exports = function(deployer, network) {
 
   // Tendies contract
   if (network === 'development') {
-    tendAddress = '0x4b698aBEB3EDd257ef4bfe0B49f158de8237D310';
+    const TendToken = artifacts.require("TendToken");
+    tendAddress = TendToken.address;
+    console.log("Using developmet TendToken at address", tendAddress);
   } else if (network === 'rinkeby') {
     tendAddress = '0x1453Dbb8A29551ADe11D89825CA812e05317EAEB';
   } else if (network === 'mainnet') {

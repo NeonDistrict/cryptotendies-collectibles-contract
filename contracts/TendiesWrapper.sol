@@ -3,11 +3,10 @@
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-//import "@openzeppelin/contracts/GSN/Context.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./ITendies.sol";
+import "./tend/TendToken.sol";
 import "./TendiesBox.sol";
 
 /**
@@ -20,8 +19,8 @@ contract TendiesWrapper is Ownable
   using SafeERC20 for ERC20;
   using SafeMath for uint256;
 
-  ITendies public tendiesContract;
   ERC20 public tendiesContractERC20;
+  TendToken public tendiesContract;
   TendiesBox public boxContract;
 
   uint256 GRILL_POOL_BOX_ID;
@@ -36,7 +35,7 @@ contract TendiesWrapper is Ownable
     Ownable()
     public
   {
-    tendiesContract = ITendies(_tendAddress);
+    tendiesContract = TendToken(_tendAddress);
     tendiesContractERC20 = ERC20(_tendAddress);
     boxContract = TendiesBox(_boxAddress);
 
@@ -55,7 +54,7 @@ contract TendiesWrapper is Ownable
     onlyOwner
   {
     require(_address != address(0), "Can't set zero address");
-    tendiesContract = ITendies(_address);
+    tendiesContract = TendToken(_address);
     tendiesContractERC20 = ERC20(_address);
   }
 
