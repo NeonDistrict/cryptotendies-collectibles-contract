@@ -18,16 +18,21 @@ module.exports = function(deployer, network) {
       console.log("Deploying TendiesBox");
       return deployer.deploy(TendiesBox, instance.address, proxyRegistryAddress);
     })
-    .then(setupCardsAndPacks);
+    .then(setupCardsAndPacks.bind(this, network));
 };
 
-async function setupCardsAndPacks() {
+async function setupCardsAndPacks(network) {
   const boxes = await TendiesBox.deployed();
   const collectible = await TendiesCard.deployed();
 
   // Grant the TendiesBox permission to mint TendiesCards
   const MINTER_ROLE = await collectible.MINTER_ROLE();
   await collectible.grantRole(MINTER_ROLE, TendiesBox.address);
+
+  if (network === 'rinkeby') {
+    // Grant test minter -- MINTER_ROLE is the same keccak in both contracts
+    await boxes.grantRole(MINTER_ROLE, '0x636c54bA584fC0e81F772c27c44CDbE773b18313');
+  }
 
   // Set up all of the tokens
   await collectible.create(config.TOKEN_COUNTS, config.CLASS_IDS);
@@ -37,7 +42,8 @@ async function setupCardsAndPacks() {
     await boxes.create(
       config.BOXES[boxIdx].NUM_CARDS,
       config.BOXES[boxIdx].CLASS_IDS,
-      config.BOXES[boxIdx].CLASS_PROBABILITIES
+      config.BOXES[boxIdx].CLASS_PROBABILITIES,
+      config.BOXES[boxIdx].GUARANTEED_CLASS_IDS
     );
   }
 }

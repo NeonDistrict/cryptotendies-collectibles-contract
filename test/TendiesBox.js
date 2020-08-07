@@ -11,7 +11,6 @@ contract("TendiesBox", (accounts) => {
     tendiesCardInstance;
 
   const INITIAL_BOX_COUNT = 2;
-  let tokenId = 0;
 
   let cardPackLog = [];
 
@@ -67,23 +66,49 @@ contract("TendiesBox", (accounts) => {
   });
 
   describe('#create()', () => {
-    it.skip('creator should be able to define the initial N pack types for v1', async () => {
-      tokenId += INITIAL_BOX_COUNT;
+    it('creator should be able to define a new valid pack types', async () => {
+      let origMaxTokenID = await instance.maxTokenID();
 
-      await instance.create(INITIAL_BOX_COUNT, { from: userCreator });
+      await instance.create(3, [0,1,2,3,4], [2000, 2000, 2000, 2000, 2000], [0, 1, 2], { from: userCreator });
 
       let maxTokenID = await instance.maxTokenID();
-      assert.equal(tokenId, maxTokenID.toNumber());
+      assert.equal(origMaxTokenID.toNumber() + 1, maxTokenID.toNumber());
 
-      const supply = await instance.totalSupply(tokenId);
+      const supply = await instance.totalSupply(maxTokenID);
       assert.ok(supply.eq(toBN(0)));
+    });
+
+    it('creator should not be able to set more guaranteed slots than available cards', async () => {
+      let origMaxTokenID = await instance.maxTokenID();
+
+      truffleAssert.fails(
+          instance.create(2, [0,1,2,3,4], [2000, 2000, 2000, 2000, 2000], [0, 0, 0], { from: userCreator }),
+          truffleAssert.ErrorType.revert,
+          'Too many guaranteed classes'
+        );
+
+      let maxTokenID = await instance.maxTokenID();
+      assert.equal(origMaxTokenID, maxTokenID.toNumber());
+    });
+
+    it('creator should not be able to set guaranteed slots for non-defined classes', async () => {
+      let origMaxTokenID = await instance.maxTokenID();
+
+      truffleAssert.fails(
+          instance.create(4, [0,1,2,3,4], [2000, 2000, 2000, 2000, 2000], [5], { from: userCreator }),
+          truffleAssert.ErrorType.revert,
+          'Invalid guaranteed class ID'
+        );
+
+      let maxTokenID = await instance.maxTokenID();
+      assert.equal(origMaxTokenID, maxTokenID.toNumber());
     });
   });
 
   describe('#uri()', () => {
-    it('should get the correct URI to the supplied value', async () => {
+    it('should get the default URI for any supplied value', async () => {
       let maxTokenID = await instance.maxTokenID();
-      assert.equal(await instance.uri(1), "https://metadata.tendies.dev/api/box/1");
+      assert.equal(await instance.uri(1), "https://metadata.tendies.dev/api/box/{id}");
     });
   });
 
@@ -179,74 +204,61 @@ contract("TendiesBox", (accounts) => {
         assert.ok(balance.eq(boxBalanceInitial.add(toBN(boxTokenAmount))));
       });
 
-    it('should be able to open a TendiesBox type 1 and receive cards',
+    async function openBoxes(_user, boxTokenId, boxTokenAmount) {
+      let boxBalanceInitial = await instance.balanceOf(_user, boxTokenId);
+
+      let tx = await instance.open(boxTokenId, boxTokenAmount, { from: _user });
+      let logs = tx.logs;
+
+      let pack = [];
+      let countBatchTransfers = 0;
+      for (let idx = 0; idx < logs.length; idx++) {
+        if (logs[idx].event === 'TransferBatch') {
+          countBatchTransfers++;
+
+          pack.push(logs[idx].args.ids.map((a) => a.toNumber(0)));
+        }
+      }
+      cardPackLog.push(pack);
+
+      // Verify total number of batch transfers
+      assert.equal(boxTokenAmount, countBatchTransfers);
+
+      // Verify that number of boxes decreased
+      balance = await instance.balanceOf(_user, boxTokenId);
+      assert.ok(balance.eq(boxBalanceInitial.sub(toBN(boxTokenAmount))));
+    }
+
+    it('should be able to open a single TendiesBox type 1 and receive cards',
+      async () => {
+        let boxTokenId = 1;
+        let boxTokenAmount = 1;
+
+        await openBoxes(userA, boxTokenId, boxTokenAmount);
+      });
+
+    it('should be able to open multiple TendiesBox type 1 and receive cards',
       async () => {
         let boxTokenId = 1;
         let boxTokenAmount = 3;
 
-        let boxBalanceInitial = await instance.balanceOf(userA, boxTokenId);
-
-        let tx = await instance.open(boxTokenId, boxTokenAmount, { from: userA });
-        let logs = tx.logs;
-
-        let pack = [];
-        for (let idx = 0; idx < logs.length; idx++) {
-          assert.ok(
-            logs[idx].event === 'TransferSingle' &&
-            (
-              logs[idx].args.operator == userA || // User calling Box
-              logs[idx].args.operator == instance.address // Box contract calling Card
-            )
-          );
-
-          if (logs[idx].args.operator == instance.address) {
-            pack.push({
-              'id' : logs[idx].args.id.toNumber(),
-              'value' : logs[idx].args.value.toNumber()
-            });
-          }
-        }
-
-        cardPackLog.push(pack);
-
-        // Verify that number of boxes decreased
-        balance = await instance.balanceOf(userA, boxTokenId);
-        assert.ok(balance.eq(boxBalanceInitial.sub(toBN(boxTokenAmount))));
+        await openBoxes(userA, boxTokenId, boxTokenAmount);
       });
 
-    it('should be able to open a TendiesBox type 2 and receive cards',
+    it('should be able to open a single TendiesBox type 2 and receive cards',
       async () => {
         let boxTokenId = 2;
         let boxTokenAmount = 1;
 
-        let boxBalanceInitial = await instance.balanceOf(userA, boxTokenId);
+        await openBoxes(userA, boxTokenId, boxTokenAmount);
+      });
 
-        let tx = await instance.open(boxTokenId, boxTokenAmount, { from: userA });
-        let logs = tx.logs;
+    it('should be able to open multiple TendiesBox type 2 and receive cards',
+      async () => {
+        let boxTokenId = 2;
+        let boxTokenAmount = 3;
 
-        let pack = [];
-        for (let idx = 0; idx < logs.length; idx++) {
-          assert.ok(
-            logs[idx].event === 'TransferSingle' &&
-            (
-              logs[idx].args.operator == userA || // User calling Box
-              logs[idx].args.operator == instance.address // Box contract calling Card
-            )
-          );
-
-          if (logs[idx].args.operator == instance.address) {
-            pack.push({
-              'id' : logs[idx].args.id.toNumber(),
-              'value' : logs[idx].args.value.toNumber()
-            });
-          }
-        }
-
-        cardPackLog.push(pack);
-
-        // Verify that number of boxes decreased
-        balance = await instance.balanceOf(userA, boxTokenId);
-        assert.ok(balance.eq(boxBalanceInitial.sub(toBN(boxTokenAmount))));
+        await openBoxes(userA, boxTokenId, boxTokenAmount);
       });
 
     it('should not be able to open a box if you don\'t have cards',

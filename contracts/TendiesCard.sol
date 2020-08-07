@@ -10,7 +10,6 @@ import "./BaseERC1155.sol";
  */
 contract TendiesCard is BaseERC1155
 {
-  using Strings for string;
   using SafeMath for uint256;
 
   uint256 seed;
@@ -24,7 +23,7 @@ contract TendiesCard is BaseERC1155
     BaseERC1155(
       "Tendies Card",
       "TENDCARD",
-      "https://metadata.tendies.dev/api/card/",
+      "https://metadata.tendies.dev/api/card/{id}",
       _proxyRegistryAddress
     )
     public
@@ -59,56 +58,4 @@ contract TendiesCard is BaseERC1155
     }
   }
 
-
-  function mintRandomOfClass(
-    address _toAddress,
-    uint256 _classId,
-    uint256 _amount
-  )
-    external
-  {
-    mint(_toAddress, _pickRandomAvailableTokenIdForClass(_classId), _amount, "");
-  }
-
-
-  function _pickRandomAvailableTokenIdForClass(
-    uint256 _classId
-  )
-    internal
-    returns (uint256)
-  {
-    if (classToTokenIds[_classId].length == 0) {
-      return 0;
-    }
-
-    uint256 randIndex = _random().mod(classToTokenIds[_classId].length);
-    return classToTokenIds[_classId][randIndex];
-  }
-
-  function _random()
-    internal
-    returns (uint256)
-  {
-    uint256 randomNumber = uint256(
-      keccak256(
-        abi.encodePacked(
-          blockhash(block.number - 1),
-          msg.sender,
-          seed
-        )
-      )
-    );
-    seed = randomNumber;
-    return randomNumber;
-  }
-
-
-  function setSeed(
-    uint256 _newSeed
-  )
-    public
-    onlyOwner
-  {
-    seed = _newSeed;
-  }
 }

@@ -4,10 +4,8 @@
  *
  * Note from Ben:
  *  This contract is pulled directly from OpenZeppelin v3.1.0
- *  We needed to make three changes to support OpenSea out of the box:
- *    1. `uri` needed to be made public
- *    2. `uri` needed to be made virtual
- *    3. `isApprovedForAll` needed to be made virtual
+ *  We needed to make changes to support OpenSea out of the box:
+ *    1. `isApprovedForAll` needed to be made virtual
  *
  **/
 
@@ -84,7 +82,7 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
      * Clients calling this function must replace the `\{id\}` substring with the
      * actual token type ID.
      */
-    function uri(uint256) public view virtual override returns (string memory) {
+    function uri(uint256) external view override returns (string memory) {
         return _uri;
     }
 

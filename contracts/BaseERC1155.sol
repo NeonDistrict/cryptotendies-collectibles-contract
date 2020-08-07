@@ -6,11 +6,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 //import "@openzeppelin/contracts/access/AccessControl.sol";
 //import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-//import "@openzeppelin/contracts/token/ERC1155/ERC1155Burnable.sol";
 import "./erc1155-openzeppelin/AccessControl.sol";
 import "./erc1155-openzeppelin/ERC1155.sol";
-import "./erc1155-openzeppelin/ERC1155Burnable.sol";
-import "./Strings.sol";
 
 contract OwnableDelegateProxy { }
 
@@ -24,9 +21,8 @@ contract ProxyRegistry {
  * has create and mint functionality, and supports useful standards from OpenZeppelin,
  * like name(), symbol(), and totalSupply()
  */
-contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnable
+contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155
 {
-  using Strings for string;
   using SafeMath for uint256;
 
   // OpenSea Proxy
@@ -54,7 +50,6 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
     address _proxyRegistryAddress
   )
     ERC1155(_uri)
-    Ownable() // DO I NEED TO DO THIS?
     public
   {
     name = _name;
@@ -79,40 +74,34 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
  * Only Token Creator Admin Functions
  **/
 
-  function grantCreatorAdmin(
+  function grantAdmin(
+    bytes32 _adminRole,
     address _address
   )
     external
   {
-    require(hasRole(CREATOR_ADMIN_ROLE, _msgSender()), "Not a creator admin");
-    _grantRole(CREATOR_ADMIN_ROLE, _address);
+    require(
+      (_adminRole == CREATOR_ADMIN_ROLE && hasRole(CREATOR_ADMIN_ROLE, _msgSender())) ||
+      (_adminRole == MINTER_ADMIN_ROLE && hasRole(MINTER_ADMIN_ROLE, _msgSender())),
+      "Not an admin"
+    );
+
+    _grantRole(_adminRole, _address);
   }
 
-  function revokeCreatorAdmin(
+  function revokeAdmin(
+    bytes32 _adminRole,
     address _address
   )
     external
   {
-    require(hasRole(CREATOR_ADMIN_ROLE, _msgSender()), "Not a creator admin");
-    _revokeRole(CREATOR_ADMIN_ROLE, _address);
-  }
+    require(
+      (_adminRole == CREATOR_ADMIN_ROLE && hasRole(CREATOR_ADMIN_ROLE, _msgSender())) ||
+      (_adminRole == MINTER_ADMIN_ROLE && hasRole(MINTER_ADMIN_ROLE, _msgSender())),
+      "Not an admin"
+    );
 
-  function grantMinterAdmin(
-    address _address
-  )
-    external
-  {
-    require(hasRole(MINTER_ADMIN_ROLE, _msgSender()), "Not a minter admin");
-    _grantRole(MINTER_ADMIN_ROLE, _address);
-  }
-
-  function revokeMinterAdmin(
-    address _address
-  )
-    external
-  {
-    require(hasRole(MINTER_ADMIN_ROLE, _msgSender()), "Not a minter admin");
-    _revokeRole(MINTER_ADMIN_ROLE, _address);
+    _revokeRole(_adminRole, _address);
   }
 
 
@@ -141,32 +130,14 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
 
 
 /**
- * Views
- **/
-
-  function uri(
-    uint256 _id
-  )
-    public view override
-    returns (string memory)
-  {
-    require(_id <= maxTokenID, "BaseERC1155#uri: NONEXISTENT_TOKEN");
-    return Strings.strConcat(
-      ERC1155.uri(_id),
-      Strings.uint2str(_id)
-    );
-  }
-
-
-/**
  * Only Token Creator Functions
  **/
 
   // Intentionally virtual to allow for extensions on the terms of creating tokens
-  function create(
+  function _create(
     uint256 _numberToCreate
   )
-    external virtual
+    internal virtual
   {
     require(hasRole(CREATOR_ROLE, _msgSender()), "Not a creator");
     require(_numberToCreate > 0, "Must create at least one token");
@@ -189,6 +160,7 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
     public
   {
     require(hasRole(MINTER_ROLE, _msgSender()), "Caller is not minter");
+    require(_id <= maxTokenID, "Token ID DNE");
 
     totalSupply[_id] = totalSupply[_id].add(_quantity);
 
@@ -196,7 +168,6 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
   }
 
 
-  /*
   function mintBatch(
     address _to,
     uint256[] memory _ids,
@@ -213,37 +184,7 @@ contract BaseERC1155 is Context, AccessControl, Ownable, ERC1155, ERC1155Burnabl
 
     _mintBatch(_to, _ids, _quantities, _data);
   }
-  */
 
-
-  function burn(
-    address _from,
-    uint256 _id,
-    uint256 _amount
-  )
-    public override
-  {
-    super.burn(_from, _id, _amount);
-
-    totalSupply[_id] = totalSupply[_id].sub(_amount);
-  }
-
-
-  /*
-  function burnBatch(
-    address _from,
-    uint256[] memory _ids,
-    uint256[] memory _amounts
-  )
-    public override
-  {
-    super.burnBatch(_from, _ids, _amounts);
-
-    for (uint256 i = 0; i < _ids.length; i++) {
-      totalSupply[_ids[i]] = totalSupply[_ids[i]].sub(_amounts[i]);
-    }
-  }
-  */
 
   /**
    * Override isApprovedForAll to whitelist user's OpenSea proxy accounts to enable gas-free listings.

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.6.0;
 
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+//import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./BaseERC1155.sol";
 import "./TendiesCard.sol";
 
@@ -10,9 +10,8 @@ import "./TendiesCard.sol";
  * @title TendiesBox
  * TendiesBox - a contract for semi-fungible tokens
  */
-contract TendiesBox is BaseERC1155, ReentrancyGuard
+contract TendiesBox is BaseERC1155
 {
-  using Strings for string;
   using SafeMath for uint256;
 
   // Must be sorted by rarity
@@ -20,8 +19,7 @@ contract TendiesBox is BaseERC1155, ReentrancyGuard
     uint16 maxQuantityPerOpen;
     uint16[] classProbabilities; // Out of the basis points, in descending order
     uint16[] classIds;
-    //bool hasGuaranteedClasses;
-    //uint16[NUM_CLASSES] guarantees;
+    uint16[] guaranteedClassIds;
   }
 
   mapping (uint256 => BoxConfig) public boxConfigs;
@@ -41,26 +39,11 @@ contract TendiesBox is BaseERC1155, ReentrancyGuard
     BaseERC1155(
       "Tendies Box",
       "TENDBOX",
-      "https://metadata.tendies.dev/api/box/",
+      "https://metadata.tendies.dev/api/box/{id}",
       _proxyRegistryAddress
     )
     public
   {
-    nftContract = TendiesCard(_nftAddress);
-  }
-
-
-/**
- * Only Owner Functions
- **/
-
-  function setNftAddress(
-    address _nftAddress
-  )
-    external
-    onlyOwner
-  {
-    require(_nftAddress != address(0), "Can't set zero address");
     nftContract = TendiesCard(_nftAddress);
   }
 
@@ -73,13 +56,26 @@ contract TendiesBox is BaseERC1155, ReentrancyGuard
   function create(
     uint16 _maxQuantityPerOpen,
     uint16[] memory _classIds,
-    uint16[] memory _classProbabilities//,
-    //uint16[] memory _guarantees
+    uint16[] memory _classProbabilities,
+    uint16[] memory _guaranteedClassIds
   )
-    external virtual
+    external
   {
     require(hasRole(CREATOR_ROLE, _msgSender()), "Not a creator");
     require(_maxQuantityPerOpen > 0, "Packs must produce at least one card");
+    require(_guaranteedClassIds.length <= _maxQuantityPerOpen, "Too many guaranteed classes");
+
+    for (uint256 guarIdx = 0; guarIdx < _guaranteedClassIds.length; guarIdx++) {
+      bool found = false;
+      for (uint256 classIdx = 0; classIdx < _classIds.length; classIdx++) {
+        if (_guaranteedClassIds[guarIdx] == _classIds[classIdx]) {
+          found = true;
+          break;
+        }
+      }
+
+      require(found, "Invalid guaranteed class ID");
+    }
 
     // Keep track of the latest ID
     maxTokenID = maxTokenID.add(1);
@@ -88,9 +84,8 @@ contract TendiesBox is BaseERC1155, ReentrancyGuard
     boxConfigs[maxTokenID] = BoxConfig({
       maxQuantityPerOpen: _maxQuantityPerOpen,
       classProbabilities: _classProbabilities,
-      classIds: _classIds//,
-      //hasGuaranteedClasses: hasGuaranteedClasses,
-      //guarantees: _guarantees
+      classIds: _classIds,
+      guaranteedClassIds: _guaranteedClassIds
     });
   }
 
@@ -100,10 +95,13 @@ contract TendiesBox is BaseERC1155, ReentrancyGuard
     uint256 _amount
   )
     external
-    nonReentrant
   {
-    // Burn the packs
-    burn(_msgSender(), _boxId, _amount);
+    // We do *not* perform operator validation here
+    // because opening a pack can only be done by the sender
+
+    // Burn the boxes, decrease total supply
+    _burn(_msgSender(), _boxId, _amount);
+    totalSupply[_boxId] = totalSupply[_boxId].sub(_amount);
 
     // If we make it here, we're minting tendies
 
@@ -112,51 +110,33 @@ contract TendiesBox is BaseERC1155, ReentrancyGuard
 
     // Iterate over the quantity of boxes specified
     for (uint256 boxIdx = 0; boxIdx < _amount; boxIdx++) {
-      uint256 quantitySent = 0;
+      uint256 arrIndex = 0;
+      uint256[] memory tokenIdsToMint = new uint256[](settings.maxQuantityPerOpen);
+      uint256[] memory quantitiesToMint = new uint256[](settings.maxQuantityPerOpen);
 
-      //uint256 arrIndex = 0;
-      //uint256[] memory tokenIdsToMint = new uint256[](settings.maxQuantityPerOpen);
-      //uint256[] memory quantitiesToMint = new uint256[](settings.maxQuantityPerOpen);
+      // Process guaranteed token ids
+      for (uint256 classIdx = 0; classIdx < settings.guaranteedClassIds.length; classIdx++) {
+        uint256 classId = settings.guaranteedClassIds[classIdx];
 
-      /*
-      // Iterate over the box's set quantity
-      if (settings.hasGuaranteedClasses) {
-        // Process guaranteed token ids
-        for (uint256 classIdx = 0; classIdx < settings.guarantees.length; classIdx++) {
-          if (classIdx > 0) {
-            uint256 quantityOfGaranteed = settings.guarantees[classIdx];
-
-            // Don't try to access elements that don't exist
-            if (arrIndex < settings.maxQuantityPerOpen) {
-              tokenIdsToMint[arrIndex] = _pickRandomAvailableTokenIdForClass(Class(classIdx));
-              quantitiesToMint[arrIndex] = quantityOfGaranteed;
-              arrIndex++;
-
-              quantitySent += quantityOfGaranteed;
-            }
-          }
-        }
-      }
-      */
-
-      // Process non-guaranteed ids
-      while (quantitySent < settings.maxQuantityPerOpen) {
-        uint256 class = _pickRandomClass(settings.classProbabilities);
-
-        // Keep track of token IDs we're minting and their quantities
-        //if (arrIndex < settings.maxQuantityPerOpen) {
-          /*
-          tokenIdsToMint[arrIndex] = _pickRandomAvailableTokenIdForClass(class);
+        // Don't try to access elements that don't exist
+        if (arrIndex < settings.maxQuantityPerOpen) {
+          tokenIdsToMint[arrIndex] = _pickRandomAvailableTokenIdForClass(classId);
           quantitiesToMint[arrIndex] = 1;
           arrIndex++;
-          */
-          nftContract.mintRandomOfClass(_msgSender(), settings.classIds[class], 1);
-          quantitySent += 1;
-        //}
+        }
+      }
+
+      // Process non-guaranteed ids
+      while (arrIndex < settings.maxQuantityPerOpen) {
+        // Keep track of token IDs we're minting and their quantities
+        uint256 class = _pickRandomClass(settings.classProbabilities, settings.classIds);
+        tokenIdsToMint[arrIndex] = _pickRandomAvailableTokenIdForClass(class);
+        quantitiesToMint[arrIndex] = 1;
+        arrIndex++;
       }
 
       // Mint all of the tokens
-      //nftContract.mintBatch(_toAddress, tokenIdsToMint, quantitiesToMint, "");
+      nftContract.mintBatch(_msgSender(), tokenIdsToMint, quantitiesToMint, "");
     }
   }
 
@@ -166,7 +146,8 @@ contract TendiesBox is BaseERC1155, ReentrancyGuard
   /////
 
   function _pickRandomClass(
-    uint16[] memory _classProbabilities
+    uint16[] memory _classProbabilities,
+    uint16[] memory _classIds
   )
     internal
     returns (uint256)
@@ -178,14 +159,32 @@ contract TendiesBox is BaseERC1155, ReentrancyGuard
     for (uint256 idx = _classProbabilities.length - 1; idx > 0; idx--) {
       uint16 probability = _classProbabilities[idx];
       if (value < probability) {
-        return idx;
+        return _classIds[idx];
       } else {
         value = value - probability;
       }
     }
 
-    return 0;
+    return _classIds[0];
   }
+
+
+  function _pickRandomAvailableTokenIdForClass(
+    uint256 _classId
+  )
+    internal
+    returns (uint256)
+  {
+    uint256 classTokenCount = nftContract.classTokenCounts(_classId);
+
+    if (classTokenCount == 0) {
+      return 0;
+    }
+
+    uint256 randIndex = _random().mod(classTokenCount);
+    return nftContract.classToTokenIds(_classId, randIndex);
+  }
+
 
   function _random()
     internal

@@ -57,18 +57,6 @@ contract("TendiesCard", (accounts) => {
   });
 
   describe('#create()', () => {
-    it.skip('creator should be able to define the initial set of cards for v1', async () => {
-      tokenId += INITIAL_CARD_SET_SIZE;
-
-      await instance.create(config.CLASS_IDS, config.TOKEN_COUNTS, { from: userCreator });
-
-      let maxTokenID = await instance.maxTokenID();
-      assert.equal(tokenId, maxTokenID.toNumber());
-
-      const supply = await instance.totalSupply(tokenId);
-      assert.ok(supply.eq(toBN(0)));
-    });
-
     it('verify the maxTokenID matches expected amount', async () => {
       let maxTokenID = await instance.maxTokenID();
       assert.equal(INITIAL_CARD_SET_SIZE, maxTokenID.toNumber());
@@ -79,12 +67,102 @@ contract("TendiesCard", (accounts) => {
       let classTokenCounts = await instance.classTokenCounts(config.CLASS_IDS[classIndex]);
       assert.equal(config.TOKEN_COUNTS[classIndex], classTokenCounts.toNumber());
     });
+
+    it('creator should be able to define more cards in the initital set', async () => {
+      let origMaxTokenID = await instance.maxTokenID();
+
+      await instance.create(
+        config.TOKEN_COUNTS,
+        config.CLASS_IDS,
+        { from: userCreator }
+      );
+
+      let maxTokenID = await instance.maxTokenID();
+      assert.equal(maxTokenID.toNumber(), origMaxTokenID.toNumber() + INITIAL_CARD_SET_SIZE);
+
+      const supply = await instance.totalSupply(maxTokenID);
+      assert.ok(supply.eq(toBN(0)));
+    });
+
+    it('verify the maxTokenID matches increased amount', async () => {
+      let maxTokenID = await instance.maxTokenID();
+      assert.equal(
+        INITIAL_CARD_SET_SIZE + INITIAL_CARD_SET_SIZE,
+        maxTokenID.toNumber()
+      );
+    });
+
+    it('verify the initial set of cards, class 0', async () => {
+      let classIndex = 0;
+      let classTokenCounts = await instance.classTokenCounts(config.CLASS_IDS[classIndex]);
+      assert.equal(
+        config.TOKEN_COUNTS[classIndex] + config.TOKEN_COUNTS[classIndex],
+        classTokenCounts.toNumber()
+      );
+    });
+
+    it('iterate all of the tokens in class 0', async () => {
+      let classIndex = 0;
+      let classTokenCounts = await instance.classTokenCounts(config.CLASS_IDS[classIndex]);
+
+      let totalCount = 0;
+      for (let idx = 0; idx < classTokenCounts; idx++) {
+        let localTokenId = await instance.classToTokenIds(config.CLASS_IDS[classIndex], idx);
+        if (localTokenId > 0) {
+          totalCount++;
+        }
+      }
+
+      assert.equal(totalCount, classTokenCounts.toNumber());
+    });
+
+    it('creator should be able to define a new set of cards in an extended set', async () => {
+      let origMaxTokenID = await instance.maxTokenID();
+
+      await instance.create(
+        config.TOKEN_COUNTS,
+        [5,6,7,8,9],
+        { from: userCreator }
+      );
+
+      let maxTokenID = await instance.maxTokenID();
+      assert.equal(maxTokenID.toNumber(), origMaxTokenID.toNumber() + INITIAL_CARD_SET_SIZE);
+
+      const supply = await instance.totalSupply(maxTokenID);
+      assert.ok(supply.eq(toBN(0)));
+    });
+
+    it('verify the maxTokenID matches increased amount', async () => {
+      let maxTokenID = await instance.maxTokenID();
+      assert.equal(
+        INITIAL_CARD_SET_SIZE + INITIAL_CARD_SET_SIZE + INITIAL_CARD_SET_SIZE,
+        maxTokenID.toNumber()
+      );
+    });
+
+    it('verify the initial set of cards, class 0', async () => {
+      let classIndex = 0;
+      let classTokenCounts = await instance.classTokenCounts(config.CLASS_IDS[classIndex]);
+      assert.equal(
+        config.TOKEN_COUNTS[classIndex] + config.TOKEN_COUNTS[classIndex],
+        classTokenCounts.toNumber()
+      );
+    });
+
+    it('verify the initial set of cards, class 5 (extended set)', async () => {
+      let extendedClass = 5;
+      let classTokenCounts = await instance.classTokenCounts(extendedClass);
+      assert.equal(
+        config.TOKEN_COUNTS[0],
+        classTokenCounts.toNumber()
+      );
+    });
   });
 
   describe('#uri()', () => {
-    it('should get the correct URI to the supplied value', async () => {
+    it('should get the default URI for any supplied value', async () => {
       let maxTokenID = await instance.maxTokenID();
-      assert.equal(await instance.uri(1), "https://metadata.tendies.dev/api/card/1");
+      assert.equal(await instance.uri(1), "https://metadata.tendies.dev/api/card/{id}");
     });
   });
 

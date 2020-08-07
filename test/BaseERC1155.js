@@ -1,13 +1,13 @@
 const truffleAssert = require('truffle-assertions');
 const vals = require('../lib/testValuesCommon.js');
 
-const BaseERC1155 = artifacts.require("../contracts/BaseERC1155.sol");
+const TestERC1155 = artifacts.require("../contracts/TestERC1155.sol");
 const MockProxyRegistry = artifacts.require("../contracts/MockProxyRegistry.sol");
 
 /* Useful aliases */
 const toBN = web3.utils.toBN;
 
-contract("BaseERC1155 - ERC 1155", (accounts) => {
+contract("BaseERC1155 via TestERC1155 - ERC 1155", (accounts) => {
   const NAME = 'ERC-1155 Test Contract';
   const SYMBOL = 'ERC1155Test';
 
@@ -44,11 +44,11 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
   let tokenId = 0;
 
   // Because we need to deploy and use a mock ProxyRegistry, we deploy our own
-  // instance of BaseERC1155 instead of using the one that Truffle deployed.
+  // instance of TestERC1155 instead of using the one that Truffle deployed.
   before(async () => {
     proxy = await MockProxyRegistry.new();
     await proxy.setProxy(owner, proxyForOwner);
-    instance = await BaseERC1155.new(NAME, SYMBOL, vals.URI_BASE, proxy.address);
+    instance = await TestERC1155.new(NAME, SYMBOL, vals.URI_BASE, proxy.address);
   });
 
   describe('#constructor()', () => {
@@ -92,39 +92,31 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
   });
 
   describe ('#uri()', () => {
-    it('should return the correct default uri for a token', async () => {
+    it('should return the uri for any token', async () => {
       const uriTokenId = 1;
       const uri = await instance.uri(uriTokenId);
-      assert.equal(uri, `${vals.URI_BASE}${uriTokenId}`);
+      assert.equal(uri, vals.URI_BASE);
     });
-
-    it('should not return the uri for a non-existent token', async () =>
-       truffleAssert.fails(
-         instance.uri(NON_EXISTENT_TOKEN_ID),
-         truffleAssert.ErrorType.revert,
-         'NONEXISTENT_TOKEN'
-       )
-      );
   });
 
   describe('#setURI()', () => {
-    let NEW_URI = "https://fakeurl.com/api/";
+    let NEW_URI = "https://fakeurl.com/api/{id}";
 
     it('should allow the contract owner to set the URI',
       async () => {
         await instance.setURI(NEW_URI, { from: owner });
         let _uri = await instance.uri(1);
-        assert.equal(NEW_URI + "1", _uri);
+        assert.equal(NEW_URI, _uri);
       });
 
     it('should NOT allow a non-contract owner to set the URI',
       async () => {
         truffleAssert.fails(
-          instance.setURI("https://someotherfakeurl.com/api/", { from: userA }),
+          instance.setURI("https://someotherfakeurl.com/api/{id}", { from: userA }),
           truffleAssert.ErrorType.revert
         );
         let _uri = await instance.uri(1);
-        assert.equal(NEW_URI + "1", _uri);
+        assert.equal(NEW_URI, _uri);
       });
   });
 
@@ -318,7 +310,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
 
     it('creator_admin should be able to add new creator_admin',
       async () => {
-        await instance.grantCreatorAdmin(userCreatorAdmin, {from: owner});
+        await instance.grantAdmin(CREATOR_ADMIN_ROLE, userCreatorAdmin, {from: owner});
         assert.equal((await instance.getRoleMemberCount(CREATOR_ADMIN_ROLE)).toNumber(), 2);
         assert.isOk(await instance.hasRole(CREATOR_ADMIN_ROLE, owner));
         assert.isOk(await instance.hasRole(CREATOR_ADMIN_ROLE, userCreatorAdmin));
@@ -326,7 +318,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
 
     it('non-owner creator_admin should be able to revoke old owner creator_admin',
       async () => {
-        await instance.revokeCreatorAdmin(owner, {from: userCreatorAdmin});
+        await instance.revokeAdmin(CREATOR_ADMIN_ROLE, owner, {from: userCreatorAdmin});
         assert.equal((await instance.getRoleMemberCount(CREATOR_ADMIN_ROLE)).toNumber(), 1);
         assert.isNotOk(await instance.hasRole(CREATOR_ADMIN_ROLE, owner));
         assert.isOk(await instance.hasRole(CREATOR_ADMIN_ROLE, userCreatorAdmin));
@@ -335,7 +327,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
     it('if owner is NOT creator_admin, should NOT be able to add new creator_admin',
       async () => {
         truffleAssert.fails(
-          instance.grantCreatorAdmin(userB, {from: owner}),
+          instance.grantAdmin(CREATOR_ADMIN_ROLE, userB, {from: owner}),
           truffleAssert.ErrorType.revert
         );
         assert.equal((await instance.getRoleMemberCount(CREATOR_ADMIN_ROLE)).toNumber(), 1);
@@ -345,7 +337,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
     it('if owner is NOT creator_admin, should NOT be able to revoke creator_admin',
       async () => {
         truffleAssert.fails(
-          instance.revokeCreatorAdmin(userCreatorAdmin, {from: owner}),
+          instance.revokeAdmin(CREATOR_ADMIN_ROLE, userCreatorAdmin, {from: owner}),
           truffleAssert.ErrorType.revert
         );
         assert.equal((await instance.getRoleMemberCount(CREATOR_ADMIN_ROLE)).toNumber(), 1);
@@ -382,7 +374,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
 
     it('minter_admin should be able to add new minter_admin',
       async () => {
-        await instance.grantMinterAdmin(userMinterAdmin, {from: owner});
+        await instance.grantAdmin(MINTER_ADMIN_ROLE, userMinterAdmin, {from: owner});
         assert.equal((await instance.getRoleMemberCount(MINTER_ADMIN_ROLE)).toNumber(), 2);
         assert.isOk(await instance.hasRole(MINTER_ADMIN_ROLE, owner));
         assert.isOk(await instance.hasRole(MINTER_ADMIN_ROLE, userMinterAdmin));
@@ -390,7 +382,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
 
     it('non-owner minter_admin should be able to revoke old owner minter_admin',
       async () => {
-        await instance.revokeMinterAdmin(owner, {from: userMinterAdmin});
+        await instance.revokeAdmin(MINTER_ADMIN_ROLE, owner, {from: userMinterAdmin});
         assert.equal((await instance.getRoleMemberCount(MINTER_ADMIN_ROLE)).toNumber(), 1);
         assert.isNotOk(await instance.hasRole(MINTER_ADMIN_ROLE, owner));
         assert.isOk(await instance.hasRole(MINTER_ADMIN_ROLE, userMinterAdmin));
@@ -399,7 +391,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
     it('if owner is NOT minter_admin, should NOT be able to add new minter_admin',
       async () => {
         truffleAssert.fails(
-          instance.grantMinterAdmin(userB, {from: owner}),
+          instance.grantAdmin(MINTER_ADMIN_ROLE, userB, {from: owner}),
           truffleAssert.ErrorType.revert
         );
         assert.equal((await instance.getRoleMemberCount(MINTER_ADMIN_ROLE)).toNumber(), 1);
@@ -409,7 +401,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
     it('if owner is NOT minter_admin, should NOT be able to revoke minter_admin',
       async () => {
         truffleAssert.fails(
-          instance.revokeMinterAdmin(userMinterAdmin, {from: owner}),
+          instance.revokeAdmin(MINTER_ADMIN_ROLE, userMinterAdmin, {from: owner}),
           truffleAssert.ErrorType.revert
         );
         assert.equal((await instance.getRoleMemberCount(MINTER_ADMIN_ROLE)).toNumber(), 1);
@@ -501,6 +493,15 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
         assert.isOk(supply.eq(MINT_AMOUNT));
       });
 
+    it('should not allow minter to mint tokens that don\'t yet exist',
+      async () => {
+        let reallyHighId = 10000000;
+        truffleAssert.fails(
+          instance.mint(userA, reallyHighId, MINT_AMOUNT, "0x0", { from: userMinter }),
+          truffleAssert.ErrorType.revert
+        );
+      });
+
     it('should not allow owner to mint tokens if not minter',
       async () => {
         truffleAssert.fails(
@@ -534,7 +535,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
   });
 
   describe('#batchMint()', () => {
-    it.skip('should allow minter to batch mint tokens',
+    it('should allow minter to batch mint tokens',
       async () => {
         await instance.mintBatch(
           userA, [INITIAL_TOKEN_ID], [MINT_AMOUNT], "0x0", { from: userMinter }
@@ -545,7 +546,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
         assert.isOk(supply.eq(MINT_AMOUNT.add(MINT_AMOUNT)));
       });
 
-    it.skip('should not allow owner to batch mint tokens if not minter',
+    it('should not allow owner to batch mint tokens if not minter',
       async () => {
         truffleAssert.fails(
           instance.mintBatch(userA, [INITIAL_TOKEN_ID], [MINT_AMOUNT], "0x0", { from: owner }),
@@ -555,7 +556,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
         assert.isOk(supply.eq(MINT_AMOUNT.add(MINT_AMOUNT)));
       });
 
-    it.skip('should not allow regular user to batch mint tokens if not minter',
+    it('should not allow regular user to batch mint tokens if not minter',
       async () => {
         truffleAssert.fails(
           instance.mintBatch(userA, [INITIAL_TOKEN_ID], [MINT_AMOUNT], "0x0", { from: userB }),
@@ -565,7 +566,7 @@ contract("BaseERC1155 - ERC 1155", (accounts) => {
         assert.isOk(supply.eq(MINT_AMOUNT.add(MINT_AMOUNT)));
       });
 
-    it.skip('should not overflow token balances',
+    it('should not overflow token balances',
       async () => {
         const supply = await instance.totalSupply(INITIAL_TOKEN_ID);
         assert.isOk(supply.eq(MINT_AMOUNT.add(MINT_AMOUNT)));
