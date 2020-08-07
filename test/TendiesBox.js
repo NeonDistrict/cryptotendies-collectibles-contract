@@ -52,15 +52,17 @@ contract("TendiesBox", (accounts) => {
 
     it('owner should be able to add new creator',
       async () => {
+        let creatorsInitial = (await instance.getRoleMemberCount(CREATOR_ROLE)).toNumber();
         await instance.grantRole(CREATOR_ROLE, userCreator, {from: owner});
-        assert.equal((await instance.getRoleMemberCount(CREATOR_ROLE)).toNumber(), 2);
+        assert.equal((await instance.getRoleMemberCount(CREATOR_ROLE)).toNumber(), creatorsInitial + 1);
         assert.isOk(await instance.hasRole(CREATOR_ROLE, userCreator));
       });
 
     it('owner should be able to add new minter',
       async () => {
+        let mintersInitial = (await instance.getRoleMemberCount(MINTER_ROLE)).toNumber();
         await instance.grantRole(MINTER_ROLE, userMinter, {from: owner});
-        assert.equal((await instance.getRoleMemberCount(MINTER_ROLE)).toNumber(), 2);
+        assert.equal((await instance.getRoleMemberCount(MINTER_ROLE)).toNumber(), mintersInitial + 1);
         assert.isOk(await instance.hasRole(MINTER_ROLE, userMinter));
       });
   });
