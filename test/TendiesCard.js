@@ -121,7 +121,7 @@ contract("TendiesCard", (accounts) => {
 
       await instance.create(
         config.TOKEN_COUNTS,
-        [5,6,7,8,9],
+        [6,7,8,9,10],
         { from: userCreator }
       );
 
@@ -149,8 +149,8 @@ contract("TendiesCard", (accounts) => {
       );
     });
 
-    it('verify the initial set of cards, class 5 (extended set)', async () => {
-      let extendedClass = 5;
+    it('verify the initial set of cards, class 6 (extended set)', async () => {
+      let extendedClass = 6;
       let classTokenCounts = await instance.classTokenCounts(extendedClass);
       assert.equal(
         config.TOKEN_COUNTS[0],

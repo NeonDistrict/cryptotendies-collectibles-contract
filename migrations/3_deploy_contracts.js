@@ -13,12 +13,11 @@ module.exports = function(deployer, network) {
   }
 
   // Tendies contract
-  if (network === 'development') {
+  let tendAddress;
+  if (network === 'development' || network === 'rinkeby') {
     const TendToken = artifacts.require("TendToken");
     tendAddress = TendToken.address;
     console.log("Using developmet TendToken at address", tendAddress);
-  } else if (network === 'rinkeby') {
-    tendAddress = '0x1453Dbb8A29551ADe11D89825CA812e05317EAEB';
   } else if (network === 'mainnet') {
     tendAddress = '0x1453Dbb8A29551ADe11D89825CA812e05317EAEB';
   }
@@ -37,7 +36,6 @@ module.exports = function(deployer, network) {
 };
 
 async function setupCardsAndPacks(network) {
-  const wrapper = await TendiesWrapper.deployed();
   const boxes = await TendiesBox.deployed();
   const collectible = await TendiesCard.deployed();
 
@@ -48,7 +46,8 @@ async function setupCardsAndPacks(network) {
   await collectible.grantRole(MINTER_ROLE, boxes.address);
 
   // Grant the TendiesWrapper permission to mint TendiesBox
-  await boxes.grantRole(MINTER_ROLE, wrapper.address)
+  const wrapper = await TendiesWrapper.deployed();
+  await boxes.grantRole(MINTER_ROLE, wrapper.address);
 
   if (network === 'rinkeby') {
     // Grant test minter on Rinkeby
