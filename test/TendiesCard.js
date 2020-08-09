@@ -162,7 +162,7 @@ contract("TendiesCard", (accounts) => {
   describe('#uri()', () => {
     it('should get the default URI for any supplied value', async () => {
       let maxTokenID = await instance.maxTokenID();
-      assert.equal(await instance.uri(1), "https://metadata.tendies.dev/api/card/{id}");
+      assert.equal(await instance.uri(1), config.CARD_API);
     });
   });
 

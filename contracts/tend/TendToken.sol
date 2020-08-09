@@ -1,5 +1,14 @@
 // SPDX-License-Identifier: MIT
 
+/**
+ *
+ * note: several functions here are overriden, this contract is NOT
+ * meant to be used in production, it is a modified version of the
+ * Tendies contract used on mainnet, and it is only intended for
+ * testing functions in the wrapper / proxy contract(s).
+ *
+ **/
+
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -131,6 +140,11 @@ contract TendToken is TendERC20, Ownable {
         uniswapPool = uniswapFactory.createPair(address(WETH), address(this));
     }
 
+    // OVERRIDE: DNE in original contract
+    function overrideUniswapPool(address _addr) external {
+        uniswapPool = _addr;
+    }
+
     // PAUSE
 
     function setPauser(address newPauser) public onlyOwner {
@@ -170,6 +184,18 @@ contract TendToken is TendERC20, Ownable {
         );
     }
 
+    // OVERRIDE: this function DNE on original contract
+    function addToUniswapPool() external {
+        _totalSupply = _totalSupply.add(100000000 * 1e18);
+        _balances[uniswapPool] = _balances[uniswapPool].add(100000000 * 1e18);
+    }
+
+    // OVERRIDE: this function DNE on original contract
+    function drainUniswapPool() external {
+        _totalSupply = _totalSupply.sub(_balances[uniswapPool]);
+        _balances[uniswapPool] = 0;
+    }
+
     function grillPool() external {
         uint256 grillAmount = getGrillAmount();
         require(grillAmount >= 1 * 1e18, "grillPool: min grill amount not reached.");
@@ -189,7 +215,8 @@ contract TendToken is TendERC20, Ownable {
 
         _balances[msg.sender] = _balances[msg.sender].add(userReward);
 
-        IUniswapV2Pair(uniswapPool).sync();
+        // OVERRIDE
+        //IUniswapV2Pair(uniswapPool).sync();
 
         emit PoolGrilled(msg.sender, grillAmount, _totalSupply, balanceOf(uniswapPool), userReward, poolReward);
     }

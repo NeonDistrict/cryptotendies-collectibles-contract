@@ -1,5 +1,7 @@
 const truffleAssert = require('truffle-assertions');
 
+const config = require('../lib/configV1.js');
+
 const TendiesBox = artifacts.require("../contracts/TendiesBox.sol");
 const TendiesCard = artifacts.require("../contracts/TendiesCard.sol");
 
@@ -110,7 +112,7 @@ contract("TendiesBox", (accounts) => {
   describe('#uri()', () => {
     it('should get the default URI for any supplied value', async () => {
       let maxTokenID = await instance.maxTokenID();
-      assert.equal(await instance.uri(1), "https://metadata.tendies.dev/api/box/{id}");
+      assert.equal(await instance.uri(1), config.BOX_API);
     });
   });
 

@@ -14,19 +14,19 @@ module.exports = function(deployer, network) {
 
   // Tendies contract
   let tendAddress;
-  if (network === 'development' || network === 'rinkeby') {
+  if (network.indexOf('mainnet') === -1) {
     const TendToken = artifacts.require("TendToken");
     tendAddress = TendToken.address;
     console.log("Using developmet TendToken at address", tendAddress);
-  } else if (network === 'mainnet') {
+  } else {
     tendAddress = '0x1453Dbb8A29551ADe11D89825CA812e05317EAEB';
   }
 
   console.log("Deploying TendiesCard");
-  deployer.deploy(TendiesCard, proxyRegistryAddress)
+  deployer.deploy(TendiesCard, config.CARD_API, proxyRegistryAddress)
     .then((instance) => {
       console.log("Deploying TendiesBox");
-      return deployer.deploy(TendiesBox, instance.address, proxyRegistryAddress);
+      return deployer.deploy(TendiesBox, config.BOX_API, instance.address, proxyRegistryAddress);
     })
     .then((instanceBox) => {
       console.log("Deploying TendiesWrapper");

@@ -33,13 +33,14 @@ contract TendiesBox is BaseERC1155
 
 
   constructor(
+    string memory _uri,
     address _nftAddress,
     address _proxyRegistryAddress
   )
     BaseERC1155(
       "Tendies Box",
       "TENDBOX",
-      "https://metadata.tendies.dev/api/box/{id}",
+      _uri,
       _proxyRegistryAddress
     )
     public

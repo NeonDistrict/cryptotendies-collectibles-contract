@@ -67,7 +67,7 @@ module.exports = {
       gas: 8000000
     },
 
-    live: {
+    mainnet: {
       network_id: 1,
       provider: function() {
         return new HDWalletProvider(

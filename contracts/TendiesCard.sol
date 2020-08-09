@@ -18,12 +18,13 @@ contract TendiesCard is BaseERC1155
   mapping (uint256 => uint256) public classTokenCounts;
 
   constructor(
+    string memory _uri,
     address _proxyRegistryAddress
   )
     BaseERC1155(
       "Tendies Card",
       "TENDCARD",
-      "https://metadata.tendies.dev/api/card/{id}",
+      _uri,
       _proxyRegistryAddress
     )
     public

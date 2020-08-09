@@ -1,10 +1,17 @@
 const TendToken = artifacts.require("TendToken");
 
-module.exports = function(deployer, network) {
-  if (network === 'development' || network === 'rinkeby') {
+module.exports = function(deployer, network, accounts) {
+  if (network.indexOf('mainnet') === -1) {
     deployer.deploy(TendToken, 100)
       .then((inst) => {
-        return inst.unpause();
+        instance = inst;
+        return instance.unpause();
+      })
+      .then(() => {
+        return instance.overrideUniswapPool(accounts[accounts.length-1]);
+      })
+      .then(() => {
+        return instance.addToUniswapPool();
       });
   }
 };
