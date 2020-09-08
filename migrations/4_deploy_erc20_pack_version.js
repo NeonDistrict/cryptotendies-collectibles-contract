@@ -4,6 +4,11 @@ const TendiesBoxWithERC20 = artifacts.require("TendiesBoxWithERC20");
 const config = require('../lib/configV1.js');
 
 module.exports = async function(deployer, network, accounts) {
+  // Temp, don't deploy on mainnet
+  if (network.indexOf('mainnet') !== -1) {
+    return;
+  }
+
   let erc20, withdrawAddress, perPackAmount;
   if (network.indexOf('rinkeby') !== -1) {
     erc20 = '';
