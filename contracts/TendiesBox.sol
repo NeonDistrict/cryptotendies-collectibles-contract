@@ -53,7 +53,6 @@ contract TendiesBox is BaseERC1155
  * Only Token Creator Functions
  **/
 
-  // Intentionally virtual to allow for extensions on the terms of creating tokens
   function create(
     uint16 _maxQuantityPerOpen,
     uint16[] memory _classIds,
@@ -97,11 +96,26 @@ contract TendiesBox is BaseERC1155
   )
     external
   {
-    // We do *not* perform operator validation here
-    // because opening a pack can only be done by the sender
+    // Open on behalf of ourself
+    openFor(_boxId, _amount, _msgSender());
+  }
+
+  // Open a pack
+  function openFor(
+    uint256 _boxId,
+    uint256 _amount,
+    address _recipient
+  )
+    public
+  {
+    // Operator check occurs here
+    require(
+        _recipient == _msgSender() || isApprovedForAll(_recipient, _msgSender()),
+        "ERC1155: caller is not owner nor approved"
+    );
 
     // Burn the boxes, decrease total supply
-    _burn(_msgSender(), _boxId, _amount);
+    _burn(_recipient, _boxId, _amount);
     totalSupply[_boxId] = totalSupply[_boxId].sub(_amount);
 
     // If we make it here, we're minting tendies
@@ -137,7 +151,7 @@ contract TendiesBox is BaseERC1155
       }
 
       // Mint all of the tokens
-      nftContract.mintBatch(_msgSender(), tokenIdsToMint, quantitiesToMint, "");
+      nftContract.mintBatch(_recipient, tokenIdsToMint, quantitiesToMint, "");
     }
   }
 

@@ -51,7 +51,7 @@ module.exports = {
     // options below to some value.
     development: {
       host: 'localhost',
-      port: 7545,
+      port: 8545,
       gas: 8000000,
       network_id: '*' // Match any network id
     },
@@ -64,7 +64,8 @@ module.exports = {
         );
       },
       network_id: "*",
-      gas: 8000000
+      gas: 8000000,
+      gasPrice: 95000000000//95000000000
     },
 
     mainnet: {
@@ -76,7 +77,8 @@ module.exports = {
         );
       },
       gas: 8000000,
-      gasPrice: 20000000000
+      gasPrice: 95000000000
+      //gasPrice:  20000000000
     }
   },
 

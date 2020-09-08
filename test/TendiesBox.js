@@ -4,6 +4,8 @@ const config = require('../lib/configV1.js');
 
 const TendiesBox = artifacts.require("../contracts/TendiesBox.sol");
 const TendiesCard = artifacts.require("../contracts/TendiesCard.sol");
+const TendiesBoxWithERC20 = artifacts.require("../contracts/TendiesBoxWithERC20.sol");
+const TestERC20 = artifacts.require("../contracts/TestERC20.sol");
 
 /* Useful aliases */
 const toBN = web3.utils.toBN;
@@ -27,10 +29,13 @@ contract("TendiesBox", (accounts) => {
   const userB = accounts[2];
   const userCreator = accounts[3];
   const userMinter = accounts[4];
+  const userRando = accounts[5];
 
   before(async () => {
     instance = await TendiesBox.deployed();
     tendiesCardInstance = await TendiesCard.deployed();
+    tendiesBoxWithERC20Instance = await TendiesBoxWithERC20.deployed();
+    testERC20Instance = await TestERC20.deployed();
   });
 
   after(async () => {
@@ -233,6 +238,31 @@ contract("TendiesBox", (accounts) => {
       assert.ok(balance.eq(boxBalanceInitial.sub(toBN(boxTokenAmount))));
     }
 
+    async function openBoxesFor(toUser, fromUser, boxTokenId, boxTokenAmount) {
+      let boxBalanceInitial = await instance.balanceOf(toUser, boxTokenId);
+
+      let tx = await instance.openFor(boxTokenId, boxTokenAmount, toUser, { from: fromUser });
+      let logs = tx.logs;
+
+      let pack = [];
+      let countBatchTransfers = 0;
+      for (let idx = 0; idx < logs.length; idx++) {
+        if (logs[idx].event === 'TransferBatch') {
+          countBatchTransfers++;
+
+          pack.push(logs[idx].args.ids.map((a) => a.toNumber(0)));
+        }
+      }
+      cardPackLog.push(pack);
+
+      // Verify total number of batch transfers
+      assert.equal(boxTokenAmount, countBatchTransfers);
+
+      // Verify that number of boxes decreased
+      balance = await instance.balanceOf(toUser, boxTokenId);
+      assert.ok(balance.eq(boxBalanceInitial.sub(toBN(boxTokenAmount))));
+    }
+
     it('should be able to open a single TendiesBox type 1 and receive cards',
       async () => {
         let boxTokenId = 1;
@@ -266,12 +296,68 @@ contract("TendiesBox", (accounts) => {
       });
 
     it('should not be able to open a box if you don\'t have cards',
-      async () => {
+      () => {
         truffleAssert.fails(
           instance.open(1, 1, { from: userB }),
           truffleAssert.ErrorType.revert,
           'ERC1155: burn amount exceeds balance'
         );
+      });
+
+    it('should be able to open a TendiesBox through wrapper and get ERC20',
+      async () => {
+        let boxTokenId = 1;
+        let boxTokenAmount = 1;
+
+        await testERC20Instance.mint(tendiesBoxWithERC20Instance.address, web3.utils.toWei("100", "ether"), { from: owner });
+
+        let boxBalanceInitial = await instance.balanceOf(userA, boxTokenId);
+
+        let erc20Balance = await testERC20Instance.balanceOf(userA);
+        assert.ok(erc20Balance.eq(toBN("0")));
+
+        await instance.setApprovalForAll(tendiesBoxWithERC20Instance.address, true, { from: userA });
+
+        await tendiesBoxWithERC20Instance.open(boxTokenId, boxTokenAmount, { from: userA });
+
+        let boxBalanceFinal = await instance.balanceOf(userA, boxTokenId);
+        assert.ok(boxBalanceFinal.eq(boxBalanceInitial.sub(toBN(boxTokenAmount))));
+
+        erc20Balance = await testERC20Instance.balanceOf(userA);
+        assert.ok(erc20Balance.eq(toBN(web3.utils.toWei("0.01", "ether"))));
+
+        // turn off for next one
+        await instance.setApprovalForAll(tendiesBoxWithERC20Instance.address, false, { from: userA });
+      });
+
+    it('should NOT be able to open a TendiesBox through wrapper without giving consent',
+      () => {
+        truffleAssert.fails(
+          tendiesBoxWithERC20Instance.open(1, 1, { from: userA }),
+          truffleAssert.ErrorType.revert,
+          'ERC1155: caller is not owner nor approved'
+        );
+      });
+
+    it('should NOT be able to open a TendiesBox type 1 on behalf of another wallet person without approval',
+      () => {
+        truffleAssert.fails(
+          instance.openFor(1, 1, userA, { from: userRando }),
+          truffleAssert.ErrorType.revert,
+          'ERC1155: caller is not owner nor approved'
+        );
+      });
+
+    it('should be able to open a TendiesBox type 1 on behalf of another wallet person and have them receive cards',
+      async () => {
+        let boxTokenId = 1;
+        let boxTokenAmount = 1;
+
+        await instance.mint(userA, boxTokenId, boxTokenAmount + 2, "0x0", { from: userMinter });
+
+        await instance.setApprovalForAll(userRando, true, { from: userA });
+
+        await openBoxesFor(userA, userRando, boxTokenId, boxTokenAmount);
       });
 
   });

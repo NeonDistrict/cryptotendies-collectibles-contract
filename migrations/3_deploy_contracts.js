@@ -8,8 +8,10 @@ module.exports = function(deployer, network) {
   let proxyRegistryAddress;
   if (network === 'rinkeby') {
     proxyRegistryAddress = "0xf57b2c51ded3a29e6891aba85459d600256cf317";
-  } else {
+  } else if (network === 'mainnet') {
     proxyRegistryAddress = "0xa5409ec958c83c3f309868babaca7c86dcb077c1";
+  } else {
+    proxyRegistryAddress = "0x0000000000000000000000000000000000000000";
   }
 
   // Tendies contract
@@ -30,7 +32,7 @@ module.exports = function(deployer, network) {
     })
     .then((instanceBox) => {
       console.log("Deploying TendiesWrapper");
-      return deployer.deploy(TendiesWrapper, tendAddress, instanceBox.address, 1, 1);
+      return deployer.deploy(TendiesWrapper, tendAddress, instanceBox.address, config.WRAPPER_PACK_ID, config.WRAPPER_NUM_PACKS);
     })
     .then(setupCardsAndPacks.bind(this, network));
 };
